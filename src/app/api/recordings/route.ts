@@ -16,7 +16,13 @@ export async function GET() {
             db = [];
         }
 
-        return NextResponse.json({ recordings: db });
+        return NextResponse.json({ recordings: db }, {
+            headers: {
+                'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            }
+        });
 
     } catch (error) {
         console.error(error);
@@ -57,7 +63,9 @@ export async function POST(req: Request) {
         db.push(recording);
         await put('db.json', JSON.stringify(db), { access: 'public', contentType: 'application/json', addRandomSuffix: false });
 
-        return NextResponse.json({ success: true, recording });
+        return NextResponse.json({ success: true, recording }, {
+            headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate' }
+        });
     } catch (error) {
         console.error("Backend Error:", error);
         return NextResponse.json({ error: 'Failed to save recording' }, { status: 500 });
@@ -86,7 +94,9 @@ export async function DELETE(req: Request) {
         db = db.filter(rec => rec.url !== url);
         await put('db.json', JSON.stringify(db), { access: 'public', contentType: 'application/json', addRandomSuffix: false });
 
-        return NextResponse.json({ success: true, recordings: db });
+        return NextResponse.json({ success: true, recordings: db }, {
+            headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate' }
+        });
     } catch (error) {
         console.error(error);
         return NextResponse.json({ error: 'Failed to delete' }, { status: 500 });

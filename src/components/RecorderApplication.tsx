@@ -23,14 +23,18 @@ export default function RecorderApplication() {
     const recognitionRef = useRef<any>(null);
     const chunksRef = useRef<BlobPart[]>([]);
 
-    // Fetch past recordings from API on mount
-    useEffect(() => {
-        fetch('/api/recordings')
+    // Fetch past recordings from API
+    const fetchRecordings = () => {
+        fetch('/api/recordings?t=' + Date.now(), { cache: 'no-store' })
             .then(res => res.json())
             .then(data => {
                 if (data.recordings) setRecordings(data.recordings);
             })
             .catch(err => console.error("Error fetching recordings:", err));
+    };
+
+    useEffect(() => {
+        fetchRecordings();
     }, []);
 
     const initSpeechRecognition = () => {
@@ -144,27 +148,25 @@ export default function RecorderApplication() {
 
         try {
             const res = await fetch("/api/recordings", { method: 'POST', body: formData });
-            const data = await res.json();
-            if (data.recording) {
-                setRecordings(prev => [data.recording, ...prev]);
-            }
+            await res.json();
+            // Refetch all recordings from server to guarantee sync
+            fetchRecordings();
         } catch (err) {
             console.error("Error saving to backend", err);
         }
     };
 
     const deleteRecording = async (e: React.MouseEvent, url: string) => {
-        e.preventDefault(); // prevent opening the link
+        e.preventDefault();
+        e.stopPropagation(); // Crucial: prevents the <a> link from opening!
         try {
             const res = await fetch("/api/recordings", {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ url })
             });
-            const data = await res.json();
-            if (data.recordings) {
-                setRecordings(data.recordings);
-            }
+            await res.json();
+            fetchRecordings();
         } catch (err) {
             console.error("Error deleting", err);
         }
@@ -274,14 +276,14 @@ export default function RecorderApplication() {
                                     <span>{rec.date}</span>
                                     <div style={{ display: 'flex', gap: '8px' }}>
                                         <button
-                                            onClick={(e) => { e.preventDefault(); setViewTranscript(rec); }}
+                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setViewTranscript(rec); }}
                                             style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px' }}
                                             title="View Transcript"
                                         >
                                             📄
                                         </button>
                                         <button
-                                            onClick={(e) => deleteRecording(e, rec.url)}
+                                            onClick={(e) => { e.stopPropagation(); deleteRecording(e, rec.url); }}
                                             style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--accent-red)', fontSize: '14px' }}
                                             title="Delete Recording"
                                         >
