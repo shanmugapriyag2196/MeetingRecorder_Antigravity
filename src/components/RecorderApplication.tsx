@@ -146,6 +146,12 @@ export default function RecorderApplication() {
         const finalTranscripts = transcriptions.filter(t => t.isFinal).map(t => t.text);
         formData.append("transcription", JSON.stringify(finalTranscripts));
 
+        const localDate = new Date().toLocaleString(undefined, {
+            year: 'numeric', month: 'short', day: 'numeric',
+            hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+        formData.append("date", localDate);
+
         try {
             const res = await fetch("/api/recordings", { method: 'POST', body: formData });
             await res.json();

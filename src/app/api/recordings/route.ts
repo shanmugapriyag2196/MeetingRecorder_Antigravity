@@ -41,11 +41,13 @@ export async function POST(req: Request) {
         const fileName = `Recording-${Date.now()}.webm`;
         const blobResponse = await put(fileName, file, { access: 'public' });
 
+        const dateStr = formData.get('date') as string;
+
         const recording = {
             id: fileName,
             url: blobResponse.url,
             name: fileName,
-            date: new Date().toLocaleString(),
+            date: dateStr || new Date().toLocaleString(),
             transcription: transcriptionJson ? JSON.parse(transcriptionJson) : []
         };
 
@@ -83,7 +85,11 @@ export async function DELETE(req: Request) {
         if (!url) return NextResponse.json({ error: 'No URL provided' }, { status: 400 });
 
         // Delete the video file from Blob storage
-        await del(url);
+        try {
+            await del(url);
+        } catch (delErr) {
+            console.warn("Vercel blob delete failed, proceeding to remove from db anyway:", delErr);
+        }
 
         let db: any[] = [];
         try {
