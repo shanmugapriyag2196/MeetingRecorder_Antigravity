@@ -146,10 +146,8 @@ export default function RecorderApplication() {
         const finalTranscripts = transcriptions.filter(t => t.isFinal).map(t => t.text);
         formData.append("transcription", JSON.stringify(finalTranscripts));
 
-        const localDate = new Date().toLocaleString(undefined, {
-            year: 'numeric', month: 'short', day: 'numeric',
-            hour: '2-digit', minute: '2-digit', second: '2-digit'
-        });
+        const d = new Date();
+        const localDate = `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
         formData.append("date", localDate);
 
         try {
@@ -162,9 +160,7 @@ export default function RecorderApplication() {
         }
     };
 
-    const deleteRecording = async (e: React.MouseEvent, url: string) => {
-        e.preventDefault();
-        e.stopPropagation(); // Crucial: prevents the <a> link from opening!
+    const deleteRecording = async (url: string) => {
         try {
             const res = await fetch("/api/recordings", {
                 method: 'DELETE',
@@ -175,6 +171,22 @@ export default function RecorderApplication() {
             fetchRecordings();
         } catch (err) {
             console.error("Error deleting", err);
+        }
+    };
+
+    const renameRecording = async (url: string, currentName: string) => {
+        const newName = prompt("Enter new name for recording:", currentName);
+        if (!newName || newName.trim() === "" || newName === currentName) return;
+
+        try {
+            await fetch("/api/recordings", {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url, newName: newName.trim() })
+            });
+            fetchRecordings();
+        } catch (err) {
+            console.error("Error renaming", err);
         }
     };
 
@@ -276,28 +288,37 @@ export default function RecorderApplication() {
                         </div>
                     ) : (
                         recordings.map(rec => (
-                            <a href={rec.url} target="_blank" rel="noreferrer" key={rec.id} className="history-item" style={{ textDecoration: 'none' }}>
-                                <div className="history-title">{rec.name}</div>
-                                <div className="history-meta" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span>{rec.date}</span>
-                                    <div style={{ display: 'flex', gap: '8px' }}>
-                                        <button
-                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setViewTranscript(rec); }}
-                                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px' }}
-                                            title="View Transcript"
-                                        >
-                                            📄
-                                        </button>
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); deleteRecording(e, rec.url); }}
-                                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--accent-red)', fontSize: '14px' }}
-                                            title="Delete Recording"
-                                        >
-                                            🗑️
-                                        </button>
+                            <div key={rec.id} className="history-item" style={{ padding: '12px 16px' }}>
+                                <a href={rec.url} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', display: 'block', marginBottom: '12px' }}>
+                                    <div className="history-title">{rec.name}</div>
+                                    <div className="history-meta" style={{ marginTop: '4px' }}>
+                                        <span>{rec.date}</span>
                                     </div>
+                                </a>
+                                <div style={{ display: 'flex', gap: '16px', justifyContent: 'flex-end', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
+                                    <button
+                                        onClick={() => setViewTranscript(rec)}
+                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '15px' }}
+                                        title="View Transcript"
+                                    >
+                                        📄
+                                    </button>
+                                    <button
+                                        onClick={() => renameRecording(rec.url, rec.name)}
+                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '15px' }}
+                                        title="Rename Recording"
+                                    >
+                                        ✏️
+                                    </button>
+                                    <button
+                                        onClick={() => deleteRecording(rec.url)}
+                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--accent-red)', fontSize: '15px' }}
+                                        title="Delete Recording"
+                                    >
+                                        🗑️
+                                    </button>
                                 </div>
-                            </a>
+                            </div>
                         ))
                     )}
                 </div>

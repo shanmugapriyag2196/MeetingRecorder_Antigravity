@@ -9,7 +9,7 @@ export async function GET() {
         try {
             const dbBlob = await head('db.json');
             if (dbBlob) {
-                const response = await fetch(dbBlob.url, { cache: 'no-store' });
+                const response = await fetch(`${dbBlob.url}?t=${Date.now()}`, { cache: 'no-store' });
                 db = await response.json();
             }
         } catch (e) {
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
         try {
             const dbBlob = await head('db.json');
             if (dbBlob) {
-                const response = await fetch(dbBlob.url, { cache: 'no-store' });
+                const response = await fetch(`${dbBlob.url}?t=${Date.now()}`, { cache: 'no-store' });
                 db = await response.json();
             }
         } catch (e) {
@@ -79,12 +79,44 @@ export async function POST(req: Request) {
     }
 }
 
+export async function PATCH(req: Request) {
+    try {
+        const { url, newName } = await req.json();
+        if (!url || !newName) return NextResponse.json({ error: 'Invalid config' }, { status: 400 });
+
+        let db: any[] = [];
+        try {
+            const dbBlob = await head('db.json');
+            if (dbBlob) {
+                const response = await fetch(`${dbBlob.url}?t=${Date.now()}`, { cache: 'no-store' });
+                db = await response.json();
+            }
+        } catch (e) {
+            db = [];
+        }
+
+        db = db.map(rec => rec.url === url ? { ...rec, name: newName } : rec);
+        await put('db.json', JSON.stringify(db), {
+            access: 'public',
+            contentType: 'application/json',
+            addRandomSuffix: false,
+            allowOverwrite: true
+        });
+
+        return NextResponse.json({ success: true, recordings: db }, {
+            headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate' }
+        });
+    } catch (error) {
+        console.error(error);
+        return NextResponse.json({ error: 'Failed to rename' }, { status: 500 });
+    }
+}
+
 export async function DELETE(req: Request) {
     try {
         const { url } = await req.json();
         if (!url) return NextResponse.json({ error: 'No URL provided' }, { status: 400 });
 
-        // Delete the video file from Blob storage
         try {
             await del(url);
         } catch (delErr) {
@@ -95,7 +127,7 @@ export async function DELETE(req: Request) {
         try {
             const dbBlob = await head('db.json');
             if (dbBlob) {
-                const response = await fetch(dbBlob.url, { cache: 'no-store' });
+                const response = await fetch(`${dbBlob.url}?t=${Date.now()}`, { cache: 'no-store' });
                 db = await response.json();
             }
         } catch (e) {
