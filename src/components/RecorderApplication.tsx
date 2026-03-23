@@ -177,6 +177,15 @@ export default function RecorderApplication() {
                         <div className={`indicator ${isRecording ? 'recording' : ''}`}></div>
                         {isRecording ? 'REC' : 'STANDBY'}
                     </div>
+
+                    {/* On-Screen Transcription Overlay */}
+                    <div className="transcription-overlay">
+                        {transcriptions.slice(-3).map((t, i) => (
+                            <div key={i} className={`overlay-text ${t.isFinal ? '' : 'interim'}`}>
+                                {t.text}
+                            </div>
+                        ))}
+                    </div>
                 </div>
 
                 {/* Controls Deck */}
