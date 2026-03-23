@@ -152,6 +152,23 @@ export default function RecorderApplication() {
         }
     };
 
+    const deleteRecording = async (e: React.MouseEvent, url: string) => {
+        e.preventDefault(); // prevent opening the link
+        try {
+            const res = await fetch("/api/recordings", {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url })
+            });
+            const data = await res.json();
+            if (data.recordings) {
+                setRecordings(data.recordings);
+            }
+        } catch (err) {
+            console.error("Error deleting", err);
+        }
+    };
+
     return (
         <>
             {/* Left Sidebar - OBS Sources Dummy */}
@@ -252,8 +269,15 @@ export default function RecorderApplication() {
                         recordings.map(rec => (
                             <a href={rec.url} target="_blank" rel="noreferrer" key={rec.id} className="history-item" style={{ textDecoration: 'none' }}>
                                 <div className="history-title">{rec.name}</div>
-                                <div className="history-meta">
+                                <div className="history-meta" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span>{rec.date}</span>
+                                    <button
+                                        onClick={(e) => deleteRecording(e, rec.url)}
+                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--accent-red)', fontSize: '14px' }}
+                                        title="Delete Recording"
+                                    >
+                                        🗑️
+                                    </button>
                                 </div>
                             </a>
                         ))
