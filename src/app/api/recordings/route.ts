@@ -1,23 +1,20 @@
 import { NextResponse } from 'next/server';
-import { writeFile, mkdir, readFile } from 'fs/promises';
-import { join } from 'path';
-import { existsSync } from 'fs';
-
-const RECORDINGS_DIR = join(process.cwd(), 'public', 'recordings');
+import { put, head } from '@vercel/blob';
 
 export async function GET() {
     try {
-        if (!existsSync(RECORDINGS_DIR)) {
-            return NextResponse.json({ recordings: [] });
+        let db: any[] = [];
+        try {
+            const dbBlob = await head('db.json');
+            if (dbBlob) {
+                const response = await fetch(dbBlob.url);
+                db = await response.json();
+            }
+        } catch (e) {
+            db = []; // if db.json doesn't exist yet
         }
 
-        const dbPath = join(RECORDINGS_DIR, 'db.json');
-        if (!existsSync(dbPath)) {
-            return NextResponse.json({ recordings: [] });
-        }
-
-        const db = await readFile(dbPath, 'utf8');
-        return NextResponse.json({ recordings: JSON.parse(db) });
+        return NextResponse.json({ recordings: db });
 
     } catch (error) {
         console.error(error);
@@ -35,34 +32,37 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'No file found' }, { status: 400 });
         }
 
-        const buffer = Buffer.from(await file.arrayBuffer());
         const fileName = `Recording-${Date.now()}.webm`;
 
-        if (!existsSync(RECORDINGS_DIR)) {
-            await mkdir(RECORDINGS_DIR, { recursive: true });
-        }
-
-        await writeFile(join(RECORDINGS_DIR, fileName), buffer);
+        // Upload the video file to Vercel Blob
+        const blobResponse = await put(fileName, file, { access: 'public' });
 
         const recording = {
             id: fileName,
-            url: `/recordings/${fileName}`,
+            url: blobResponse.url,
             name: fileName,
             date: new Date().toLocaleString(),
             transcription: transcriptionJson ? JSON.parse(transcriptionJson) : []
         };
 
-        const dbPath = join(RECORDINGS_DIR, 'db.json');
+        // Update the db.json in Vercel Blob
         let db: any[] = [];
-        if (existsSync(dbPath)) {
-            try {
-                db = JSON.parse(await readFile(dbPath, 'utf8'));
-            } catch (e) {
-                db = [];
+        try {
+            const dbBlob = await head('db.json');
+            if (dbBlob) {
+                const response = await fetch(dbBlob.url);
+                db = await response.json();
             }
+        } catch (e) {
+            db = [];
         }
+
         db.push(recording);
-        await writeFile(dbPath, JSON.stringify(db));
+        await put('db.json', JSON.stringify(db), {
+            access: 'public',
+            contentType: 'application/json',
+            addRandomSuffix: false
+        });
 
         return NextResponse.json({ success: true, recording });
 
