@@ -15,6 +15,7 @@ export default function RecorderApplication() {
     const [isRecording, setIsRecording] = useState(false);
     const [transcriptions, setTranscriptions] = useState<{ text: string, isFinal: boolean }[]>([]);
     const [recordings, setRecordings] = useState<Recording[]>([]);
+    const [viewTranscript, setViewTranscript] = useState<Recording | null>(null);
 
     const videoRef = useRef<HTMLVideoElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -271,19 +272,47 @@ export default function RecorderApplication() {
                                 <div className="history-title">{rec.name}</div>
                                 <div className="history-meta" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <span>{rec.date}</span>
-                                    <button
-                                        onClick={(e) => deleteRecording(e, rec.url)}
-                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--accent-red)', fontSize: '14px' }}
-                                        title="Delete Recording"
-                                    >
-                                        🗑️
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button
+                                            onClick={(e) => { e.preventDefault(); setViewTranscript(rec); }}
+                                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '14px' }}
+                                            title="View Transcript"
+                                        >
+                                            📄
+                                        </button>
+                                        <button
+                                            onClick={(e) => deleteRecording(e, rec.url)}
+                                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--accent-red)', fontSize: '14px' }}
+                                            title="Delete Recording"
+                                        >
+                                            🗑️
+                                        </button>
+                                    </div>
                                 </div>
                             </a>
                         ))
                     )}
                 </div>
             </div>
+
+            {/* Transcript Modal */}
+            {viewTranscript && (
+                <div className="modal-overlay" onClick={() => setViewTranscript(null)}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()} style={{ padding: '24px' }}>
+                        <div className="modal-header" style={{ marginBottom: '16px' }}>
+                            <div className="modal-title">Transcript: {viewTranscript.name}</div>
+                            <button className="modal-close" onClick={() => setViewTranscript(null)}>×</button>
+                        </div>
+                        <div style={{ maxHeight: '60vh', overflowY: 'auto', lineHeight: '1.6', fontSize: '14px', color: 'var(--text-main)', padding: '16px', background: 'var(--bg-main)', borderRadius: '6px' }}>
+                            {viewTranscript.transcription && viewTranscript.transcription.length > 0 ? (
+                                viewTranscript.transcription.map((t, idx) => <p key={idx} style={{ marginBottom: '8px' }}>{t}</p>)
+                            ) : (
+                                <p style={{ color: 'var(--text-muted)' }}>No transcription data was captured for this recording.</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 }

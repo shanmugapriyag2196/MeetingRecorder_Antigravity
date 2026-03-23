@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { put, head, del } from '@vercel/blob';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
     try {
         let db: any[] = [];
