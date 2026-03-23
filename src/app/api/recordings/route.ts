@@ -61,7 +61,12 @@ export async function POST(req: Request) {
         }
 
         db.push(recording);
-        await put('db.json', JSON.stringify(db), { access: 'public', contentType: 'application/json', addRandomSuffix: false });
+        await put('db.json', JSON.stringify(db), {
+            access: 'public',
+            contentType: 'application/json',
+            addRandomSuffix: false,
+            allowOverwrite: true
+        });
 
         return NextResponse.json({ success: true, recording }, {
             headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate' }
@@ -92,7 +97,12 @@ export async function DELETE(req: Request) {
         }
 
         db = db.filter(rec => rec.url !== url);
-        await put('db.json', JSON.stringify(db), { access: 'public', contentType: 'application/json', addRandomSuffix: false });
+        await put('db.json', JSON.stringify(db), {
+            access: 'public',
+            contentType: 'application/json',
+            addRandomSuffix: false,
+            allowOverwrite: true
+        });
 
         return NextResponse.json({ success: true, recordings: db }, {
             headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate' }
