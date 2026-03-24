@@ -23,6 +23,7 @@ export default function RecorderApplication() {
     const streamRef = useRef<MediaStream | null>(null);
     const recognitionRef = useRef<any>(null);
     const chunksRef = useRef<BlobPart[]>([]);
+    const transcriptionsRef = useRef<{ text: string, isFinal: boolean }[]>([]);
 
     // Fetch past recordings from API
     const fetchRecordings = () => {
@@ -57,6 +58,7 @@ export default function RecorderApplication() {
                     setTranscriptions(prev => {
                         const newList = [...prev.filter(t => t.isFinal)];
                         newList.push({ text: event.results[i][0].transcript, isFinal: true });
+                        transcriptionsRef.current = newList;
                         return newList;
                     });
                 } else {
@@ -68,6 +70,7 @@ export default function RecorderApplication() {
                 setTranscriptions(prev => {
                     const newList = [...prev.filter(t => t.isFinal)];
                     newList.push({ text: interimTranscript, isFinal: false });
+                    transcriptionsRef.current = newList;
                     return newList;
                 });
             }
@@ -79,6 +82,7 @@ export default function RecorderApplication() {
     const startRecording = async () => {
         try {
             chunksRef.current = [];
+            transcriptionsRef.current = [];
             setTranscriptions([]);
 
             // 1. Get screen stream
@@ -145,7 +149,8 @@ export default function RecorderApplication() {
         setIsSaving(true);
         const formData = new FormData();
         formData.append("file", blob, `Recording-${new Date().toISOString()}.webm`);
-        const finalTranscripts = transcriptions.map(t => t.text);
+        // Use the Ref here to avoid the React stale closure bug!
+        const finalTranscripts = transcriptionsRef.current.map(t => t.text);
         formData.append("transcription", JSON.stringify(finalTranscripts));
 
         const d = new Date();
