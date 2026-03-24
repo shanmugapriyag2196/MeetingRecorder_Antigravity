@@ -16,6 +16,7 @@ export default function RecorderApplication() {
     const [transcriptions, setTranscriptions] = useState<{ text: string, isFinal: boolean }[]>([]);
     const [recordings, setRecordings] = useState<Recording[]>([]);
     const [viewTranscript, setViewTranscript] = useState<Recording | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
 
     const videoRef = useRef<HTMLVideoElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -141,9 +142,10 @@ export default function RecorderApplication() {
     };
 
     const saveRecording = async (blob: Blob) => {
+        setIsSaving(true);
         const formData = new FormData();
         formData.append("file", blob, `Recording-${new Date().toISOString()}.webm`);
-        const finalTranscripts = transcriptions.filter(t => t.isFinal).map(t => t.text);
+        const finalTranscripts = transcriptions.map(t => t.text);
         formData.append("transcription", JSON.stringify(finalTranscripts));
 
         const d = new Date();
@@ -157,6 +159,8 @@ export default function RecorderApplication() {
             fetchRecordings();
         } catch (err) {
             console.error("Error saving to backend", err);
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -178,11 +182,14 @@ export default function RecorderApplication() {
         const newName = prompt("Enter new name for recording:", currentName);
         if (!newName || newName.trim() === "" || newName === currentName) return;
 
+        const trimmedName = newName.trim();
+        setRecordings(prev => prev.map(rec => rec.url === url ? { ...rec, name: trimmedName } : rec));
+
         try {
             await fetch("/api/recordings", {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url, newName: newName.trim() })
+                body: JSON.stringify({ url, newName: trimmedName })
             });
             fetchRecordings();
         } catch (err) {
@@ -282,7 +289,12 @@ export default function RecorderApplication() {
             <div className="sidebar" style={{ borderRight: 'none', borderLeft: '1px solid var(--border-color)' }}>
                 <div className="sidebar-title">Recording History</div>
                 <div className="history-list">
-                    {recordings.length === 0 ? (
+                    {isSaving && (
+                        <div style={{ padding: '16px', fontSize: '14px', color: 'var(--accent-blue)', textAlign: 'center' }}>
+                            Uploading to Cloud... (eta ~5sec)
+                        </div>
+                    )}
+                    {recordings.length === 0 && !isSaving ? (
                         <div style={{ padding: '16px', fontSize: '13px', color: 'var(--text-muted)', textAlign: 'center' }}>
                             No recordings yet.
                         </div>
