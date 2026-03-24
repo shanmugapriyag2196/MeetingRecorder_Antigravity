@@ -202,6 +202,25 @@ export default function RecorderApplication() {
         }
     };
 
+    const downloadRecording = async (url: string, name: string) => {
+        try {
+            const response = await fetch(url);
+            const blob = await response.blob();
+            const blobUrl = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = name.endsWith('.webm') ? name : `${name}.webm`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(blobUrl);
+        } catch (error) {
+            console.error("Download failed:", error);
+            alert("Could not download the recording.");
+        }
+    };
+
     return (
         <>
             {/* Left Sidebar - OBS Sources Dummy */}
@@ -319,6 +338,13 @@ export default function RecorderApplication() {
                                         title="View Transcript"
                                     >
                                         📄
+                                    </button>
+                                    <button
+                                        onClick={() => downloadRecording(rec.url, rec.name)}
+                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '15px' }}
+                                        title="Download Recording"
+                                    >
+                                        ⬇️
                                     </button>
                                     <button
                                         onClick={() => renameRecording(rec.url, rec.name)}
