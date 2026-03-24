@@ -1,22 +1,19 @@
 import { NextResponse } from 'next/server';
-import { put, head, del } from '@vercel/blob';
+import { put, del } from '@vercel/blob';
+import { supabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
     try {
-        let db: any[] = [];
-        try {
-            const dbBlob = await head('db.json');
-            if (dbBlob) {
-                const response = await fetch(`${dbBlob.url}?t=${Date.now()}`, { cache: 'no-store' });
-                db = await response.json();
-            }
-        } catch (e) {
-            db = [];
-        }
+        const { data: db, error } = await supabase
+            .from('recordings')
+            .select('*')
+            .order('date', { ascending: false });
 
-        return NextResponse.json({ recordings: db }, {
+        if (error) throw error;
+
+        return NextResponse.json({ recordings: db || [] }, {
             headers: {
                 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
                 'Pragma': 'no-cache',
@@ -25,7 +22,7 @@ export async function GET() {
         });
 
     } catch (error) {
-        console.error(error);
+        console.error("GET DB Error:", error);
         return NextResponse.json({ error: 'Failed to fetch recordings' }, { status: 500 });
     }
 }
@@ -39,6 +36,8 @@ export async function POST(req: Request) {
         if (!file) return NextResponse.json({ error: 'No file found' }, { status: 400 });
 
         const fileName = `Recording-${Date.now()}.webm`;
+
+        // 1. Upload video to Vercel Blob ONLY
         const blobResponse = await put(fileName, file, { access: 'public' });
 
         const dateStr = formData.get('date') as string;
@@ -51,24 +50,12 @@ export async function POST(req: Request) {
             transcription: transcriptionJson ? JSON.parse(transcriptionJson) : []
         };
 
-        let db: any[] = [];
-        try {
-            const dbBlob = await head('db.json');
-            if (dbBlob) {
-                const response = await fetch(`${dbBlob.url}?t=${Date.now()}`, { cache: 'no-store' });
-                db = await response.json();
-            }
-        } catch (e) {
-            db = [];
-        }
+        // 2. Insert robust metadata to Supabase
+        const { error } = await supabase
+            .from('recordings')
+            .insert([recording]);
 
-        db.push(recording);
-        await put('db.json', JSON.stringify(db), {
-            access: 'public',
-            contentType: 'application/json',
-            addRandomSuffix: false,
-            allowOverwrite: true
-        });
+        if (error) throw error;
 
         return NextResponse.json({ success: true, recording }, {
             headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate' }
@@ -84,24 +71,13 @@ export async function PATCH(req: Request) {
         const { url, newName } = await req.json();
         if (!url || !newName) return NextResponse.json({ error: 'Invalid config' }, { status: 400 });
 
-        let db: any[] = [];
-        try {
-            const dbBlob = await head('db.json');
-            if (dbBlob) {
-                const response = await fetch(`${dbBlob.url}?t=${Date.now()}`, { cache: 'no-store' });
-                db = await response.json();
-            }
-        } catch (e) {
-            db = [];
-        }
+        const { data: db, error } = await supabase
+            .from('recordings')
+            .update({ name: newName })
+            .eq('url', url)
+            .select();
 
-        db = db.map(rec => rec.url === url ? { ...rec, name: newName } : rec);
-        await put('db.json', JSON.stringify(db), {
-            access: 'public',
-            contentType: 'application/json',
-            addRandomSuffix: false,
-            allowOverwrite: true
-        });
+        if (error) throw error;
 
         return NextResponse.json({ success: true, recordings: db }, {
             headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate' }
@@ -117,30 +93,21 @@ export async function DELETE(req: Request) {
         const { url } = await req.json();
         if (!url) return NextResponse.json({ error: 'No URL provided' }, { status: 400 });
 
+        // 1. Delete video from Vercel blob
         try {
             await del(url);
         } catch (delErr) {
             console.warn("Vercel blob delete failed, proceeding to remove from db anyway:", delErr);
         }
 
-        let db: any[] = [];
-        try {
-            const dbBlob = await head('db.json');
-            if (dbBlob) {
-                const response = await fetch(`${dbBlob.url}?t=${Date.now()}`, { cache: 'no-store' });
-                db = await response.json();
-            }
-        } catch (e) {
-            db = [];
-        }
+        // 2. Delete metadata from Supabase
+        const { data: db, error } = await supabase
+            .from('recordings')
+            .delete()
+            .eq('url', url)
+            .select();
 
-        db = db.filter(rec => rec.url !== url);
-        await put('db.json', JSON.stringify(db), {
-            access: 'public',
-            contentType: 'application/json',
-            addRandomSuffix: false,
-            allowOverwrite: true
-        });
+        if (error) throw error;
 
         return NextResponse.json({ success: true, recordings: db }, {
             headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate' }
