@@ -241,6 +241,12 @@ export default function RecorderApplication() {
 
                 {/* Preview Container */}
                 <div className="preview-container">
+                    {!isRecording && (
+                        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', opacity: 0.2, textAlign: 'center' }}>
+                            <img src="/vg-logo.png" alt="Value Global" style={{ width: '200px', marginBottom: '16px' }} />
+                            <div style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-muted)' }}>VG Recorder</div>
+                        </div>
+                    )}
                     <video ref={videoRef} className="preview-video" muted playsInline />
                     <div className="status-badge">
                         <div className={`indicator ${isRecording ? 'recording' : ''}`}></div>
